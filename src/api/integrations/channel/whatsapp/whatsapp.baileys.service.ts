@@ -537,7 +537,7 @@ export class BaileysStartupService extends ChannelStartupService {
       connectTimeoutMs: 30_000,
       keepAliveIntervalMs: 30_000,
       qrTimeout: 45_000,
-      emitOwnEvents: false,
+      emitOwnEvents: true,
       shouldIgnoreJid: (jid) => {
         const isGroupJid = this.localSettings.groupsIgnore && isJidGroup(jid);
         const isBroadcast = !this.localSettings.readStatus && isJidBroadcast(jid);
@@ -1030,7 +1030,13 @@ export class BaileysStartupService extends ChannelStartupService {
 
                   const { buffer, mediaType, fileName, size } = media;
                   const mimetype = mimeTypes.lookup(fileName).toString();
-                  const fullName = join(`${this.instance.id}`, received.key.remoteJid, mediaType, v4().replace(/-/g, ""), fileName);
+                  const fullName = join(
+                    `${this.instance.id}`,
+                    received.key.remoteJid,
+                    mediaType,
+                    v4().replace(/-/g, ''),
+                    fileName,
+                  );
                   await s3Service.uploadFile(fullName, buffer, size.fileLength?.low, {
                     'Content-Type': mimetype,
                   });
@@ -1088,7 +1094,12 @@ export class BaileysStartupService extends ChannelStartupService {
             where: { remoteJid: received.key.remoteJid, instanceId: this.instanceId },
           });
 
-          const contactRaw: { remoteJid: string; pushName: string; profilePicUrl?: string; instanceId: string } = {
+          const contactRaw: {
+            remoteJid: string;
+            pushName: string;
+            profilePicUrl?: string;
+            instanceId: string;
+          } = {
             remoteJid: received.key.remoteJid,
             pushName: received.key.fromMe ? '' : received.key.fromMe == null ? '' : received.pushName,
             profilePicUrl: (await this.profilePicture(received.key.remoteJid)).profilePictureUrl,
@@ -1104,7 +1115,12 @@ export class BaileysStartupService extends ChannelStartupService {
 
             if (this.configService.get<Database>('DATABASE').SAVE_DATA.CONTACTS)
               await this.prismaRepository.contact.upsert({
-                where: { remoteJid_instanceId: { remoteJid: contactRaw.remoteJid, instanceId: contactRaw.instanceId } },
+                where: {
+                  remoteJid_instanceId: {
+                    remoteJid: contactRaw.remoteJid,
+                    instanceId: contactRaw.instanceId,
+                  },
+                },
                 create: contactRaw,
                 update: contactRaw,
               });
@@ -1864,7 +1880,15 @@ export class BaileysStartupService extends ChannelStartupService {
           // group?.participants,
         );
       } else {
-        messageSent = await this.sendMessage(sender, message, mentions, linkPreview, quoted);
+        messageSent = await this.sendMessage(
+          sender,
+          message,
+          mentions,
+          linkPreview,
+          quoted,
+          null,
+          options.ephemeralExpiration,
+        );
       }
 
       if (Long.isLong(messageSent?.messageTimestamp)) {
@@ -2047,6 +2071,7 @@ export class BaileysStartupService extends ChannelStartupService {
         conversation: data.text,
       },
       {
+        ephemeralExpiration: data?.ephemeralExpiration,
         delay: data?.delay,
         presence: 'composing',
         quoted: data?.quoted,
@@ -2068,6 +2093,7 @@ export class BaileysStartupService extends ChannelStartupService {
         },
       },
       {
+        ephemeralExpiration: data?.ephemeralExpiration,
         delay: data?.delay,
         presence: 'composing',
         quoted: data?.quoted,
@@ -2298,7 +2324,6 @@ export class BaileysStartupService extends ChannelStartupService {
         const response = await axios.get(url, config);
         imageBuffer = Buffer.from(response.data, 'binary');
       }
-
       const webpBuffer = await sharp(imageBuffer).webp().toBuffer();
 
       return webpBuffer;
@@ -2324,6 +2349,7 @@ export class BaileysStartupService extends ChannelStartupService {
       {
         delay: data?.delay,
         presence: 'composing',
+        ephemeralExpiration: data?.ephemeralExpiration,
         quoted: data?.quoted,
         mentionsEveryOne: data?.mentionsEveryOne,
         mentioned: data?.mentioned,
@@ -2346,6 +2372,7 @@ export class BaileysStartupService extends ChannelStartupService {
       {
         delay: data?.delay,
         presence: 'composing',
+        ephemeralExpiration: data?.ephemeralExpiration,
         quoted: data?.quoted,
         mentionsEveryOne: data?.mentionsEveryOne,
         mentioned: data?.mentioned,
@@ -2376,6 +2403,7 @@ export class BaileysStartupService extends ChannelStartupService {
       {
         delay: data?.delay,
         presence: 'composing',
+        ephemeralExpiration: data?.ephemeralExpiration,
         quoted: data?.quoted,
         mentionsEveryOne: data?.mentionsEveryOne,
         mentioned: data?.mentioned,
@@ -2406,7 +2434,11 @@ export class BaileysStartupService extends ChannelStartupService {
         ptt: true,
         mimetype: 'audio/ogg; codecs=opus',
       },
-      { presence: 'recording', delay: data?.delay },
+      {
+        presence: 'recording',
+        delay: data?.delay,
+        ephemeralExpiration: data?.ephemeralExpiration,
+      },
     );
   }
 
@@ -2548,6 +2580,7 @@ export class BaileysStartupService extends ChannelStartupService {
       return await this.sendMessageWithTyping(data.number, message, {
         delay: data?.delay,
         presence: 'composing',
+        ephemeralExpiration: data?.ephemeralExpiration,
         quoted: data?.quoted,
         mentionsEveryOne: data?.mentionsEveryOne,
         mentioned: data?.mentioned,
@@ -2611,6 +2644,7 @@ export class BaileysStartupService extends ChannelStartupService {
     return await this.sendMessageWithTyping(data.number, message, {
       delay: data?.delay,
       presence: 'composing',
+      ephemeralExpiration: data?.ephemeralExpiration,
       quoted: data?.quoted,
       mentionsEveryOne: data?.mentionsEveryOne,
       mentioned: data?.mentioned,
@@ -2631,6 +2665,7 @@ export class BaileysStartupService extends ChannelStartupService {
       {
         delay: data?.delay,
         presence: 'composing',
+        ephemeralExpiration: data?.ephemeralExpiration,
         quoted: data?.quoted,
         mentionsEveryOne: data?.mentionsEveryOne,
         mentioned: data?.mentioned,
@@ -2654,6 +2689,7 @@ export class BaileysStartupService extends ChannelStartupService {
       {
         delay: data?.delay,
         presence: 'composing',
+        ephemeralExpiration: data?.ephemeralExpiration,
         quoted: data?.quoted,
         mentionsEveryOne: data?.mentionsEveryOne,
         mentioned: data?.mentioned,
@@ -3792,18 +3828,18 @@ export class BaileysStartupService extends ChannelStartupService {
 
     await this.prismaRepository.$executeRawUnsafe(
       `INSERT INTO "Chat" ("id", "instanceId", "remoteJid", "labels", "createdAt", "updatedAt")
-       VALUES ($4, $2, $3, to_jsonb(ARRAY[$1]::text[]), NOW(), NOW()) ON CONFLICT ("instanceId", "remoteJid")
+             VALUES ($4, $2, $3, to_jsonb(ARRAY[$1]::text[]), NOW(), NOW()) ON CONFLICT ("instanceId", "remoteJid")
      DO
-      UPDATE
-          SET "labels" = (
-          SELECT to_jsonb(array_agg(DISTINCT elem))
-          FROM (
-          SELECT jsonb_array_elements_text("Chat"."labels") AS elem
-          UNION
-          SELECT $1::text AS elem
-          ) sub
-          ),
-          "updatedAt" = NOW();`,
+            UPDATE
+                SET "labels" = (
+                SELECT to_jsonb(array_agg(DISTINCT elem))
+                FROM (
+                SELECT jsonb_array_elements_text("Chat"."labels") AS elem
+                UNION
+                SELECT $1::text AS elem
+                ) sub
+                ),
+                "updatedAt" = NOW();`,
       labelId,
       instanceId,
       chatId,
@@ -3816,18 +3852,18 @@ export class BaileysStartupService extends ChannelStartupService {
 
     await this.prismaRepository.$executeRawUnsafe(
       `INSERT INTO "Chat" ("id", "instanceId", "remoteJid", "labels", "createdAt", "updatedAt")
-       VALUES ($4, $2, $3, '[]'::jsonb, NOW(), NOW()) ON CONFLICT ("instanceId", "remoteJid")
+             VALUES ($4, $2, $3, '[]'::jsonb, NOW(), NOW()) ON CONFLICT ("instanceId", "remoteJid")
      DO
-      UPDATE
-          SET "labels" = COALESCE (
-          (
-          SELECT jsonb_agg(elem)
-          FROM jsonb_array_elements_text("Chat"."labels") AS elem
-          WHERE elem <> $1
-          ),
-          '[]'::jsonb
-          ),
-          "updatedAt" = NOW();`,
+            UPDATE
+                SET "labels" = COALESCE (
+                (
+                SELECT jsonb_agg(elem)
+                FROM jsonb_array_elements_text("Chat"."labels") AS elem
+                WHERE elem <> $1
+                ),
+                '[]'::jsonb
+                ),
+                "updatedAt" = NOW();`,
       labelId,
       instanceId,
       chatId,
